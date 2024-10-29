@@ -28,7 +28,7 @@ Le letture ottenute dalle piattaforme di sequenziamento sono state preprocessate
 
 ### 2. **Identificazione dei circRNA**
 Per l’identificazione dei circRNA sono stati usati i seguenti strumenti:
-- **CIRI2** per i dati Illumina, che identifica giunzioni di back-splicing dai dati di lettura breve.
+- **[CIRI2](https://github.com/bioinfo-biols/CIRI-cookbook/blob/master/source/CIRI2.md)** per i dati Illumina, che identifica giunzioni di back-splicing dai dati di lettura breve.
 - **[long_read_circRNA](https://github.com/omiics-dk/long_read_circRNA)** per i dati Nanopore, specificamente progettato per catturare circRNA a lettura lunga.
 
 ### 3. **Analisi dell’Espressione Differenziale**
