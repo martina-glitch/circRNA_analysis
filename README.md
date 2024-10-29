@@ -33,7 +33,7 @@ Per l’identificazione dei circRNA sono stati usati i seguenti strumenti:
 
 ### 3. **Analisi dell’Espressione Differenziale**
 L’analisi dell’espressione differenziale è stata eseguita utilizzando un approccio statistico rigoroso per determinare i circRNA significativamente espressi in modo differenziale tra cellule infettate da CMV/ZIKV e controlli:
-- Normalizzazione dei dati (FPKM, TPM) per tener conto delle differenze nella profondità di sequenziamento.
+- Normalizzazione dei dati (TPM) per tener conto delle differenze nella profondità di sequenziamento.
 - Uso di **modelli di distribuzione di Poisson negativa** per l’analisi statistica dell’espressione differenziale.
 - Visualizzazione dei risultati con **volcano plots** e **heatmaps** per evidenziare i circRNA con variazioni significative nell’espressione.
 
