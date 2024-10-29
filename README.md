@@ -29,7 +29,7 @@ Le letture ottenute dalle piattaforme di sequenziamento sono state preprocessate
 ### 2. **Identificazione dei circRNA**
 Per l’identificazione dei circRNA sono stati usati i seguenti strumenti:
 - **CIRI2** per i dati Illumina, che identifica giunzioni di back-splicing dai dati di lettura breve.
-- **long_read_circRNA** per i dati Nanopore, specificamente progettato per catturare circRNA a lettura lunga.
+- **[long_read_circRNA](https://github.com/omiics-dk/long_read_circRNA)** per i dati Nanopore, specificamente progettato per catturare circRNA a lettura lunga.
 
 ### 3. **Analisi dell’Espressione Differenziale**
 L’analisi dell’espressione differenziale è stata eseguita utilizzando un approccio statistico rigoroso per determinare i circRNA significativamente espressi in modo differenziale tra cellule infettate da CMV/ZIKV e controlli:
