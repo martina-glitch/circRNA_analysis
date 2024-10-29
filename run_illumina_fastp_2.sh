@@ -2,7 +2,7 @@
 
 # filtra i campioni illumina A5 e A6
 
-# Definisci la lista dei campioni da modificare
+# Definisce la lista dei campioni da modificare
 campioni=("A5" "A6")
 
 # Percorso dei file di input e output
@@ -12,13 +12,13 @@ percorso_output="/data/martina.zambon/results_illumina_fastp"
 # Loop attraverso i campioni
 for indice in "${!campioni[@]}"; do
     campione="${campioni[$indice]}"
-    # Costruisci i nomi dei file di input e output
+    # Costruisce i nomi dei file di input e output
     input_forward="${percorso_input}/${campione}/${campione}_FKRN24001880$((indice+3))-1A_H7C75DSXC_L2_1.fq.gz"
     input_reverse="${percorso_input}/${campione}/${campione}_FKRN24001880$((indice+3))-1A_H7C75DSXC_L2_2.fq.gz"
     output_prefix="${percorso_output}/out_${campione}"
     html_output="${percorso_output}/uscita_fastp_${campione}.html"
     
-     # Costruisci il comando fastp
+     # Costruisce il comando fastp
     comando_fastp=(
         "fastp"
         "-i" "$input_forward"
