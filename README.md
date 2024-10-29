@@ -77,6 +77,6 @@ Per eseguire la pipeline, sono necessari i seguenti strumenti e pacchetti:
 
 ## Contatti
 
-Per domande o chiarimenti, contattare:  
+ 
 **Martina Zambon**  
 Email: martina.zambon.7@studenti.unipd.it
