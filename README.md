@@ -9,6 +9,16 @@
 
 ---
 
+## Descrizione
+
+Questo progetto di tesi ha lo scopo di analizzare i profili di espressione dei circRNA in cellule precursori neuronali infettate da Zika Virus (ZIKV) e Citomegalovirus umano (CMV) a diverse condizioni temporali (24h, 48h, 72h). Lo studio utilizza tecniche di sequenziamento sia a lettura breve (Illumina) che a lettura lunga (Nanopore) per confrontare e integrare i risultati ottenuti da entrambe le piattaforme. 
+
+I dati ottenuti sono stati analizzati utilizzando una pipeline bioinformatica appositamente costruita, che ha permesso di identificare e analizzare l’espressione differenziale dei circRNA. I risultati forniscono insight sui meccanismi molecolari coinvolti nella risposta delle cellule all'infezione virale e potrebbero avere implicazioni importanti nello sviluppo di biomarcatori per malattie congenite.
+
+---
+
+## Struttura della Pipeline
+
 - **circRNA_analysis**
   - **illumina_analysis**
     - *data_preprocessing*
@@ -31,17 +41,6 @@
       - normalize_expression.py
     - *output/*
   - README.md
-
-
-## Descrizione
-
-Questo progetto di tesi ha lo scopo di analizzare i profili di espressione dei circRNA in cellule precursori neuronali infettate da Zika Virus (ZIKV) e Citomegalovirus umano (CMV) a diverse condizioni temporali (24h, 48h, 72h). Lo studio utilizza tecniche di sequenziamento sia a lettura breve (Illumina) che a lettura lunga (Nanopore) per confrontare e integrare i risultati ottenuti da entrambe le piattaforme. 
-
-I dati ottenuti sono stati analizzati utilizzando una pipeline bioinformatica appositamente costruita, che ha permesso di identificare e analizzare l’espressione differenziale dei circRNA. I risultati forniscono insight sui meccanismi molecolari coinvolti nella risposta delle cellule all'infezione virale e potrebbero avere implicazioni importanti nello sviluppo di biomarcatori per malattie congenite.
-
----
-
-## Struttura della Pipeline
 
 ### 1. **Pre-processing dei Dati di Sequenziamento**
 
