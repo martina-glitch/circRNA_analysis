@@ -4,27 +4,28 @@
 **Analisi dell’espressione di circRNA umani e virali nei precursori neuronali infettati da virus Zika e Citomegalovirus umano**
 
 /circRNA_analysis
-├── **illumina_analysis/**
-│   ├── **data_preprocessing/**
+├── illumina_analysis
+│   ├── data_preprocessing
 │   │   └── run_illumina_fastp.sh
-│   ├── **alignment/**
+│   ├── alignment
 │   │   └── CIRI2+CIRI-AS+CIRI-full.sh
-│   ├── **read_counting/**
+│   ├── read_counting
 │   │   ├── count_reads_illumina.py
 │   │   └── tot_circRNA_illumina.py
-│   └── **output/**
-├── **nanopore_analysis/**
-│   ├── **data_preprocessing/**
-│   ├── **alignment/**
-│   ├── **circRNA_detection/**
-│   │   ├── long_read_circRNA_run.sh
-│   │   ├── formatted.py
-│   ├── **read_counting/**
+│   └── output/
+├── nanopore_analysis
+│   ├── data_preprocessing
+│   ├── alignment
+│   ├── circRNA_detection
+│   │   └── long_read_circRNA_run.sh
+│   │   └── formatted.py
+│   ├── read_counting
 │   │   └── fasta_intermedi.py
-│   ├── **normalization/**
+│   ├── normalization
 │   │   └── normalize_expression.py
-│   └── **output/**
+│   └── output/
 └── README.md
+
 
 
 
