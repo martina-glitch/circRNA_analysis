@@ -55,6 +55,8 @@ Sono stati generati grafici come:
     - *read_counting*
       - count_reads_illumina.py
       - tot_circRNA_illumina.py
+    - *analsysis*
+      - heatmap.py
     - *output/*
   - **nanopore_analysis**
     - *data_preprocessing*
