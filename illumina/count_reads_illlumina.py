@@ -1,5 +1,7 @@
 import os
 
+# script used to create histogram of reads distributions in R
+
 # Path of the input file
 input_file_path = '/data/martina.zambon/results_illumina_fastp/out_A1_1'
 
