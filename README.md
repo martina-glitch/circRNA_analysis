@@ -19,28 +19,6 @@ I dati ottenuti sono stati analizzati utilizzando una pipeline bioinformatica ap
 
 ## Struttura della Pipeline
 
-- **circRNA_analysis**
-  - **illumina_analysis**
-    - *data_preprocessing*
-      - run_illumina_fastp.sh
-    - *alignment*
-      - CIRI2+CIRI-AS+CIRI-full.sh
-    - *read_counting*
-      - count_reads_illumina.py
-      - tot_circRNA_illumina.py
-    - *output/*
-  - **nanopore_analysis**
-    - *data_preprocessing*
-    - *alignment*
-    - *circRNA_detection*
-      - long_read_circRNA_run.sh
-      - formatted.py
-    - *read_counting*
-      - fasta_intermedi.py
-    - *normalization*
-      - normalize_expression.py
-    - *output/*
-  - README.md
 
 ### 1. **Pre-processing dei Dati di Sequenziamento**
 
@@ -67,6 +45,34 @@ Sono stati generati grafici come:
 - **Boxplots** per confrontare i campioni nelle diverse condizioni temporali.
   
 ---
+## Pipeline
+
+- **circRNA_analysis**
+  - **illumina_analysis**
+    - *data_preprocessing*
+      - run_illumina_fastp.sh
+    - *alignment*
+      - CIRI2+CIRI-AS+CIRI-full.sh
+    - *read_counting*
+      - count_reads_illumina.py
+      - tot_circRNA_illumina.py
+    - *output/*
+  - **nanopore_analysis**
+    - *data_preprocessing*
+    - *alignment*
+    - *circRNA_detection*
+      - long_read_circRNA_run.sh
+      - formatted.py
+    - *read_counting*
+      - fasta_intermedi.py
+    - *normalization*
+      - normalize_expression.py
+    - *output/*
+  - README.md
+
+
+---
+
 
 ## Requisiti Tecnici
 
