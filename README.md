@@ -78,7 +78,6 @@ Sono stati generati grafici come:
 Per eseguire la pipeline, sono necessari i seguenti strumenti e pacchetti:
 
 - **Python 3.x**
-  - pandas
   - matplotlib
 - **R** con i seguenti pacchetti:
   - DESeq2
