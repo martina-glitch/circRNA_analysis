@@ -45,7 +45,6 @@ Sono stati generati grafici come:
 - **Boxplots** per confrontare i campioni nelle diverse condizioni temporali.
   
 ---
-## Pipeline
 
 - **circRNA_analysis**
   - **illumina_analysis**
