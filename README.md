@@ -1,6 +1,6 @@
 # README
 
-## Titolo della Tesi
+
 **Analisi dell’espressione di circRNA umani e virali nei precursori neuronali infettati da virus Zika e Citomegalovirus umano**
 
 - **circRNA_analysis**
