@@ -3,8 +3,7 @@
 ## Titolo della Tesi
 **Analisi dell’espressione di circRNA umani e virali nei precursori neuronali infettati da virus Zika e Citomegalovirus umano**
 
-‘‘‘
-/circRNA_analysis
+‘‘‘/circRNA_analysis
 ├── illumina_analysis
 │   ├── data_preprocessing
 │   │   └── run_illumina_fastp.sh
@@ -25,8 +24,7 @@
 │   ├── normalization
 │   │   └── normalize_expression.py
 │   └── output/
-└── README.md
-‘‘‘
+└── README.md‘‘‘
 
 
 
