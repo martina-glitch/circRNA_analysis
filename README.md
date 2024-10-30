@@ -2,6 +2,13 @@
 
 ## **Analisi dell’espressione di circRNA umani e virali nei precursori neuronali infettati da virus Zika e Citomegalovirus umano**
 
+
+**Autore**: Martina Zambon  
+**Relatore**: Prof. Enrico Lavezzo  
+**Anno Accademico**: 2023-2024
+
+---
+
 - **circRNA_analysis**
   - **illumina_analysis**
     - *data_preprocessing*
@@ -25,13 +32,6 @@
     - *output/*
   - README.md
 
-
-
-**Autore**: Martina Zambon  
-**Relatore**: Prof. Enrico Lavezzo  
-**Anno Accademico**: 2023-2024
-
----
 
 ## Descrizione
 
