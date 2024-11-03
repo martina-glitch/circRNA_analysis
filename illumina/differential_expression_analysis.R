@@ -1,193 +1,479 @@
-# Required Libraries
+
+
 library(edgeR)
 library(readr)
-library(dplyr)
 library(ggplot2)
 library(ggrepel)
-library(gridExtra)
-library(pheatmap)
-library(grid)
+library(xtable)
+library(dplyr)
 
-# Read Raw Count Data
+# Read the raw count data from the CSV file
 file_path <- "~/Downloads/normalized_sorted_Amerge1.csv"
 data <- read_delim(file_path, delim = ";", col_names = FALSE, skip = 1)
-colnames(data) <- c("chr", "start", "end", paste0("A", 1:9))
 
-# Create Unique circRNA ID and Filter Data
+# Assign column names as specified
+colnames(data) <- c("chr", "start", "end", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "A9")
+
+# Create a count matrix by selecting only the count columns
+count_data <- data %>%
+  select(A1:A9) %>%
+  as.data.frame()
+
+# Create a unique circRNA ID
 data <- data %>%
-  mutate(circRNA_ID = paste(chr, start, end, sep = "_")) %>%
-  select(circRNA_ID, A1:A9) %>%
-  column_to_rownames(var = "circRNA_ID")
+  mutate(circRNA_ID = paste(chr, start, end, sep = "_"))
 
-# Data Filtering Based on Thresholds
-filtered_data <- data %>%
-  rowwise() %>%
-  mutate(max_diff = max(c_across(A1:A9)) - min(c_across(A1:A9))) %>%
-  filter(max_diff > 50 & max(c_across(A1:A9)) < 9000) %>%
-  ungroup() %>%
-  select(-max_diff)
+# Assign row names to the count matrix based on circRNA ID
+rownames(count_data) <- data$circRNA_ID
 
-# Save Filtered Data
-write.csv(filtered_data, "~/Downloads/filtered_data_cleaned.csv", row.names = TRUE)
-
-# Sample Metadata and Normalization
+# Create a sample metadata table with "condition" and "time"
 sample_metadata <- data.frame(
-  row.names = colnames(filtered_data),
+  row.names = colnames(count_data),
   condition = rep(c("control", "cmv", "zika"), times = 3),
   time = rep(c("24h", "48h", "72h"), each = 3)
 )
-sample_metadata$condition <- relevel(as.factor(sample_metadata$condition), ref = "control")
-sample_metadata$time <- relevel(as.factor(sample_metadata$time), ref = "24h")
 
-# Create DGEList and Estimate Dispersion
-group <- factor(sample_metadata$condition)
-y <- DGEList(counts = filtered_data, group = group)
-y <- estimateDisp(y)
+# Convert the condition and time columns to factors
+sample_metadata$condition <- as.factor(sample_metadata$condition)
+sample_metadata$time <- as.factor(sample_metadata$time)
 
-# Design Matrix and Fit Model with Interaction Terms
-design_interaction <- model.matrix(~ condition * time, data = sample_metadata)
-fit_interaction <- glmFit(y, design_interaction)
+# Set 'control' as the baseline for condition
+sample_metadata$condition <- relevel(sample_metadata$condition, ref = "control")
 
-# Likelihood Ratio Tests for Each Comparison
-lrt_list <- list(
-  cmv_vs_control_24h = glmLRT(fit_interaction, coef = 2),
-  zika_vs_control_24h = glmLRT(fit_interaction, coef = 3),
-  cmv_vs_control_48h = glmLRT(fit_interaction, coef = 5),
-  zika_vs_control_48h = glmLRT(fit_interaction, coef = 6),
-  cmv_vs_control_72h = glmLRT(fit_interaction, coef = 7),
-  zika_vs_control_72h = glmLRT(fit_interaction, coef = 8)
-)
+# Set '24h' as the baseline for time
+sample_metadata$time <- relevel(sample_metadata$time, ref = "24h")
 
-# Function to Generate Volcano Plot
-generate_volcano_plot <- function(lrt_result, title, output_path) {
-  results <- topTags(lrt_result, n = nrow(y))$table %>%
-    mutate(circRNA_ID = rownames(.), Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+# Create a DGEList object using the raw count data
+group <- factor(sample_metadata$condition)  # Factor representing the experimental groups
+y <- DGEList(counts = count_data, group = group)
+
+# Loop per ogni punto temporale
+for (time_point in unique_times) {
+  # Filtra i campioni per il punto temporale corrente
+  time_samples <- sample_metadata %>%
+    filter(time == time_point)
+  count_data_time <- count_data[, rownames(time_samples)]
   
-  top_circrnas <- results %>%
-    filter(Significant == "Yes")
+  # Crea un DGEList per il tempo specifico
+  y_time <- DGEList(counts = count_data_time)
   
-  p <- ggplot(results, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  # Normalizzazione TMM
+  # y_time <- calcNormFactors(y_time)
+  
+  # Stima della dispersione
+  y_time <- estimateDisp(y_time)
+  
+  # Creazione della matrice di design in base alla condizione
+  design_condition_time <- model.matrix(~ condition, data = time_samples)
+  
+  # Adattamento del modello
+  fit_condition_time <- glmFit(y_time, design_condition_time)
+  
+  # Test del rapporto di verosimiglianza per i confronti tra condizioni
+  lrt_cmv_vs_control <- glmLRT(fit_condition_time, coef = 2)  # CMV vs Control
+  lrt_zika_vs_control <- glmLRT(fit_condition_time, coef = 3)  # Zika vs Control
+  
+  # Salva i risultati in variabili dinamiche per il punto temporale corrente
+  assign(paste0("results_cmv_vs_control_", time_point), topTags(lrt_cmv_vs_control, n = nrow(y_time))$table)
+  assign(paste0("results_zika_vs_control_", time_point), topTags(lrt_zika_vs_control, n = nrow(y_time))$table)
+  
+  # Generazione dei grafici Volcano
+  # CMV vs Control
+  volcano_data_cmv_vs_control <- get(paste0("results_cmv_vs_control_", time_point)) %>%
+    mutate(circRNA_ID = rownames(get(paste0("results_cmv_vs_control_", time_point)))) %>%
+    mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+  
+  print(
+    ggplot(volcano_data_cmv_vs_control, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+      geom_point() +
+      geom_text_repel(data = filter(volcano_data_cmv_vs_control, Significant == "Yes"), aes(label = circRNA_ID)) +
+      labs(title = paste("Volcano Plot: CMV vs Control at", time_point), x = "Log2 Fold Change", y = "-Log10 P-value") +
+      scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+      theme_minimal()
+  )
+  
+  ggsave(paste0("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_CMV_vs_Control_", time_point, ".png"),
+         width = 14, height = 8, dpi = 300)
+  
+  # Zika vs Control
+  volcano_data_zika_vs_control <- get(paste0("results_zika_vs_control_", time_point)) %>%
+    mutate(circRNA_ID = rownames(get(paste0("results_zika_vs_control_", time_point)))) %>%
+    mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+  
+  ggplot(volcano_data_zika_vs_control, aes(x = logFC, y = -log10(PValue), color = Significant)) +
     geom_point() +
-    geom_text_repel(data = top_circrnas, aes(label = circRNA_ID), size = 3, max.overlaps = Inf, box.padding = 0.4) +
-    labs(title = title, x = "Log2 Fold Change", y = "-Log10 P-value") +
+    geom_text_repel(data = filter(volcano_data_zika_vs_control, Significant == "Yes"), aes(label = circRNA_ID)) +
+    labs(title = paste("Volcano Plot: Zika vs Control at", time_point), x = "Log2 Fold Change", y = "-Log10 P-value") +
     scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
     theme_minimal()
   
-  ggsave(output_path, plot = p, width = 14, height = 8, dpi = 300)
+  ggsave(paste0("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_Zika_vs_Control_", time_point, ".png"),
+         width = 14, height = 8, dpi = 300)
 }
 
-# Generate and Save Volcano Plots for Each Comparison
-for (name in names(lrt_list)) {
-  generate_volcano_plot(
-    lrt_list[[name]],
-    paste("Volcano Plot:", gsub("_", " ", name)),
-    paste0("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Filtered_Volcano_", name, ".png")
-  )
-}
-
-# Function to Save Significant circRNAs as Table Image
-save_table_as_image <- function(results, file_path, top_n = 15) {
-  significant_circRNAs <- results %>%
-    filter(FDR < 0.05 & abs(logFC) > 1) %>%
-    arrange(FDR, desc(abs(logFC))) %>%
-    head(top_n)
+# Funzione per esportare i top circRNA in LaTeX
+for (time_point in unique_times) {
+  # Esporta i risultati per CMV vs Control
+  export_top_circRNA_to_LaTeX(get(paste0("results_cmv_vs_control_", time_point)), "CMV_vs_Control", time_point, top_n = 20)
   
-  table_grob <- tableGrob(
-    significant_circRNAs,
-    theme = ttheme_minimal(core = list(fg_params = list(cex = 0.6)), colhead = list(fg_params = list(cex = 0.7)))
-  )
-  
-  ggsave(file_path, plot = table_grob, width = 10, height = 6, dpi = 300)
+  # Esporta i risultati per Zika vs Control
+  export_top_circRNA_to_LaTeX(get(paste0("results_zika_vs_control_", time_point)), "Zika_vs_Control", time_point, top_n = 20)
 }
 
-# Save Tables for Each Comparison
-for (name in names(lrt_list)) {
-  results <- topTags(lrt_list[[name]], n = nrow(y))$table
-  save_table_as_image(
-    results,
-    paste0("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Filtered_Top15_Table_", name, ".png")
-  )
-}
 
-# Comparisons for Time Only
-design_time <- model.matrix(~ time, data = sample_metadata)
-fit_time <- glmFit(y, design_time)
 
-lrt_time_list <- list(
-  time_48h_vs_24h = glmLRT(fit_time, coef = 2),
-  time_72h_vs_24h = glmLRT(fit_time, coef = 3)
-)
 
-# Save Volcano Plots and Tables for Time Comparisons
-for (name in names(lrt_time_list)) {
-  generate_volcano_plot(
-    lrt_time_list[[name]],
-    paste("Volcano Plot:", gsub("_", " ", name)),
-    paste0("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Filtered_Volcano_", name, ".png")
-  )
-  results <- topTags(lrt_time_list[[name]], n = nrow(y))$table
-  save_table_as_image(
-    results,
-    paste0("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Filtered_Top15_Table_", name, ".png")
-  )
-}
 
-# Comparisons for Condition Only
-design_condition <- model.matrix(~ condition, data = sample_metadata)
-fit_condition <- glmFit(y, design_condition)
 
-lrt_condition_list <- list(
-  cmv_vs_control = glmLRT(fit_condition, coef = 2),
-  zika_vs_control = glmLRT(fit_condition, coef = 3)
-)
 
-# Save Volcano Plots and Tables for Condition Comparisons
-for (name in names(lrt_condition_list)) {
-  generate_volcano_plot(
-    lrt_condition_list[[name]],
-    paste("Volcano Plot:", gsub("_", " ", name)),
-    paste0("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Filtered_Volcano_", name, ".png")
-  )
-  results <- topTags(lrt_condition_list[[name]], n = nrow(y))$table
-  save_table_as_image(
-    results,
-    paste0("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Filtered_Top15_Table_", name, ".png")
-  )
-}
 
-# Find Common circRNAs Across Comparisons (Flexible Matching)
-split_circRNA_ID <- function(circRNA_ID) {
-  strsplit(circRNA_ID, "_")[[1]]
-}
 
-is_similar_circRNA <- function(id1, id2, tolerance = 2) {
-  parts1 <- split_circRNA_ID(id1)
-  parts2 <- split_circRNA_ID(id2)
-  
-  if (parts1[1] != parts2[1]) return(FALSE)
-  start_diff <- abs(as.numeric(parts1[2]) - as.numeric(parts2[2]))
-  end_diff <- abs(as.numeric(parts1[3]) - as.numeric(parts2[3]))
-  
-  return(start_diff <= tolerance & end_diff <= tolerance)
-}
 
-find_similar_circRNAs <- function(outliers, significant_ids, tolerance = 2) {
-  matches <- c()
-  for (outlier in outliers) {
-    for (sig_id in significant_ids) {
-      if (is_similar_circRNA(outlier, sig_id, tolerance)) {
-        matches <- c(matches, outlier)
-        break
-      }
-    }
-  }
-  return(matches)
-}
 
-# Example Usage for Finding Common circRNAs
-common_circRNAs <- find_similar_circRNAs(
-  rownames(filtered_data),
-  rownames(filtered_data),
-  tolerance = 2
-)
-print(common_circRNAs)
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Filtra i campioni per Control
+control_samples <- sample_metadata %>%
+  filter(condition == "control")
+
+# Filtra i dati di conteggio per i campioni Control
+count_data_control <- count_data[, rownames(control_samples)]
+
+# Crea un oggetto DGEList per i campioni Control
+y_control <- DGEList(counts = count_data_control)
+
+# Normalizzazione (TMM)
+# y_control <- calcNormFactors(y_control)
+
+# Stima della dispersione
+y_control <- estimateDisp(y_control)
+
+# Crea la matrice di design basata solo sul tempo per i campioni Control
+design_time_control <- model.matrix(~ time, data = control_samples)
+
+# Fitting del modello
+fit_time_control <- glmFit(y_control, design_time_control)
+
+# Confronto tra 48h e 24h nei campioni Control (coef = 2)
+lrt_control_48h_vs_24h <- glmLRT(fit_time_control, coef = 2)
+
+# Confronto tra 72h e 24h nei campioni Control (coef = 3)
+lrt_control_72h_vs_24h <- glmLRT(fit_time_control, coef = 3)
+
+# Confronto tra 72h e 48h nei campioni Control
+lrt_control_72h_vs_48h <- glmLRT(fit_time_control, contrast = c(0, -1, 1))
+
+# Visualizza i risultati
+topTags(lrt_control_48h_vs_24h)
+topTags(lrt_control_72h_vs_24h)
+topTags(lrt_control_72h_vs_48h)
+
+
+
+
+
+# Risultati per 48h vs 24h
+results_control_48h_vs_24h <- topTags(lrt_control_48h_vs_24h, n = nrow(y_control))$table
+volcano_data_control_48h_vs_24h <- results_control_48h_vs_24h %>%
+  mutate(circRNA_ID = rownames(results_control_48h_vs_24h)) %>%
+  mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+
+# Volcano Plot per 48h vs 24h
+ggplot(volcano_data_control_48h_vs_24h, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  geom_point() +
+  geom_text_repel(data = filter(volcano_data_control_48h_vs_24h, Significant == "Yes"), aes(label = circRNA_ID)) +
+  labs(title = "Volcano Plot: Control 48h vs 24h", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+
+# Salva il plot
+ggsave("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_Control_48h_vs_24h.png", 
+       width = 14, height = 8, dpi = 300)
+
+
+
+
+
+
+# Risultati per 72h vs 24h
+results_control_72h_vs_24h <- topTags(lrt_control_72h_vs_24h, n = nrow(y_control))$table
+volcano_data_control_72h_vs_24h <- results_control_72h_vs_24h %>%
+  mutate(circRNA_ID = rownames(results_control_72h_vs_24h)) %>%
+  mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+
+# Volcano Plot per 72h vs 24h
+ggplot(volcano_data_control_72h_vs_24h, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  geom_point() +
+  geom_text_repel(data = filter(volcano_data_control_72h_vs_24h, Significant == "Yes"), aes(label = circRNA_ID)) +
+  labs(title = "Volcano Plot: Control 72h vs 24h", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+
+# Salva il plot
+ggsave("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_Control_72h_vs_24h.png", 
+       width = 14, height = 8, dpi = 300)
+
+
+
+
+
+# Risultati per 72h vs 48h
+results_control_72h_vs_48h <- topTags(lrt_control_72h_vs_48h, n = nrow(y_control))$table
+volcano_data_control_72h_vs_48h <- results_control_72h_vs_48h %>%
+  mutate(circRNA_ID = rownames(results_control_72h_vs_48h)) %>%
+  mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+
+# Volcano Plot per 72h vs 48h
+ggplot(volcano_data_control_72h_vs_48h, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  geom_point() +
+  geom_text_repel(data = filter(volcano_data_control_72h_vs_48h, Significant == "Yes"), aes(label = circRNA_ID)) +
+  labs(title = "Volcano Plot: Control 72h vs 48h", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+
+# Salva il plot
+ggsave("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_Control_72h_vs_48h.png", 
+       width = 14, height = 8, dpi = 300)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Filtra i campioni per CMV
+cmv_samples <- sample_metadata %>%
+  filter(condition == "cmv")
+
+# Filtra i dati di conteggio per i campioni CMV
+count_data_cmv <- count_data[, rownames(cmv_samples)]
+
+# Crea un oggetto DGEList per i campioni CMV
+y_cmv <- DGEList(counts = count_data_cmv)
+
+# Normalizzazione (TMM)
+# y_cmv <- calcNormFactors(y_cmv)
+
+# Stima della dispersione
+y_cmv <- estimateDisp(y_cmv)
+
+# Crea la matrice di design basata solo sul tempo per i campioni CMV
+design_time_cmv <- model.matrix(~ time, data = cmv_samples)
+
+# Fitting del modello
+fit_time_cmv <- glmFit(y_cmv, design_time_cmv)
+
+# Confronto tra 48h e 24h nei campioni CMV (coef = 2)
+lrt_cmv_48h_vs_24h <- glmLRT(fit_time_cmv, coef = 2)
+
+# Confronto tra 72h e 24h nei campioni CMV (coef = 3)
+lrt_cmv_72h_vs_24h <- glmLRT(fit_time_cmv, coef = 3)
+
+# Confronto tra 72h e 48h nei campioni CMV (usando contrast)
+lrt_cmv_72h_vs_48h <- glmLRT(fit_time_cmv, contrast = c(0, -1, 1))
+
+# Visualizza i risultati
+topTags(lrt_cmv_48h_vs_24h)
+topTags(lrt_cmv_72h_vs_24h)
+topTags(lrt_cmv_72h_vs_48h)
+
+
+
+
+# Risultati per 48h vs 24h
+results_cmv_48h_vs_24h <- topTags(lrt_cmv_48h_vs_24h, n = nrow(y_cmv))$table
+volcano_data_cmv_48h_vs_24h <- results_cmv_48h_vs_24h %>%
+  mutate(circRNA_ID = rownames(results_cmv_48h_vs_24h)) %>%
+  mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+
+# Volcano Plot per 48h vs 24h
+ggplot(volcano_data_cmv_48h_vs_24h, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  geom_point() +
+  geom_text_repel(data = filter(volcano_data_cmv_48h_vs_24h, Significant == "Yes"), aes(label = circRNA_ID)) +
+  labs(title = "Volcano Plot: CMV 48h vs 24h", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+
+# Salva il plot
+ggsave("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_CMV_48h_vs_24h.png", 
+       width = 14, height = 8, dpi = 300)
+
+
+
+# Risultati per 72h vs 24h
+results_cmv_72h_vs_24h <- topTags(lrt_cmv_72h_vs_24h, n = nrow(y_cmv))$table
+volcano_data_cmv_72h_vs_24h <- results_cmv_72h_vs_24h %>%
+  mutate(circRNA_ID = rownames(results_cmv_72h_vs_24h)) %>%
+  mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+
+# Volcano Plot per 72h vs 24h
+ggplot(volcano_data_cmv_72h_vs_24h, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  geom_point() +
+  geom_text_repel(data = filter(volcano_data_cmv_72h_vs_24h, Significant == "Yes"), aes(label = circRNA_ID)) +
+  labs(title = "Volcano Plot: CMV 72h vs 24h", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+
+# Salva il plot
+ggsave("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_CMV_72h_vs_24h.png", 
+       width = 14, height = 8, dpi = 300)
+
+
+
+
+
+
+# Risultati per 72h vs 48h
+results_cmv_72h_vs_48h <- topTags(lrt_cmv_72h_vs_48h, n = nrow(y_cmv))$table
+volcano_data_cmv_72h_vs_48h <- results_cmv_72h_vs_48h %>%
+  mutate(circRNA_ID = rownames(results_cmv_72h_vs_48h)) %>%
+  mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+
+# Volcano Plot per 72h vs 48h
+ggplot(volcano_data_cmv_72h_vs_48h, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  geom_point() +
+  geom_text_repel(data = filter(volcano_data_cmv_72h_vs_48h, Significant == "Yes"), aes(label = circRNA_ID)) +
+  labs(title = "Volcano Plot: CMV 72h vs 48h", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+
+# Salva il plot
+ggsave("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_CMV_72h_vs_48h.png", 
+       width = 14, height = 8, dpi = 300)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Filtra i campioni per Zika
+zika_samples <- sample_metadata %>%
+  filter(condition == "zika")
+
+# Filtra i dati di conteggio per i campioni Zika
+count_data_zika <- count_data[, rownames(zika_samples)]
+
+# Crea un oggetto DGEList per i campioni Zika
+y_zika <- DGEList(counts = count_data_zika)
+
+# Normalizzazione (TMM)
+# y_zika <- calcNormFactors(y_zika)
+
+# Stima della dispersione
+y_zika <- estimateDisp(y_zika)
+
+# Crea la matrice di design basata solo sul tempo per i campioni Zika
+design_time_zika <- model.matrix(~ time, data = zika_samples)
+
+# Fitting del modello
+fit_time_zika <- glmFit(y_zika, design_time_zika)
+
+# Confronto tra 48h e 24h nei campioni Zika (coef = 2)
+lrt_zika_48h_vs_24h <- glmLRT(fit_time_zika, coef = 2)
+
+# Confronto tra 72h e 24h nei campioni Zika (coef = 3)
+lrt_zika_72h_vs_24h <- glmLRT(fit_time_zika, coef = 3)
+
+# Confronto tra 72h e 48h nei campioni Zika
+lrt_zika_72h_vs_48h <- glmLRT(fit_time_zika, contrast = c(0, -1, 1))
+
+# Visualizza i risultati
+topTags(lrt_zika_48h_vs_24h)
+topTags(lrt_zika_72h_vs_24h)
+topTags(lrt_zika_72h_vs_48h)
+
+
+# Risultati per 48h vs 24h
+results_zika_48h_vs_24h <- topTags(lrt_zika_48h_vs_24h, n = nrow(y_zika))$table
+volcano_data_zika_48h_vs_24h <- results_zika_48h_vs_24h %>%
+  mutate(circRNA_ID = rownames(results_zika_48h_vs_24h)) %>%
+  mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+
+# Volcano Plot per 48h vs 24h
+ggplot(volcano_data_zika_48h_vs_24h, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  geom_point() +
+  geom_text_repel(data = filter(volcano_data_zika_48h_vs_24h, Significant == "Yes"), aes(label = circRNA_ID)) +
+  labs(title = "Volcano Plot: Zika 48h vs 24h", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+
+# Salva il plot
+ggsave("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_Zika_48h_vs_24h.png", 
+       width = 14, height = 8, dpi = 300)
+
+
+
+
+# Risultati per 72h vs 24h
+results_zika_72h_vs_24h <- topTags(lrt_zika_72h_vs_24h, n = nrow(y_zika))$table
+volcano_data_zika_72h_vs_24h <- results_zika_72h_vs_24h %>%
+  mutate(circRNA_ID = rownames(results_zika_72h_vs_24h)) %>%
+  mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+
+# Volcano Plot per 72h vs 24h
+ggplot(volcano_data_zika_72h_vs_24h, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  geom_point() +
+  geom_text_repel(data = filter(volcano_data_zika_72h_vs_24h, Significant == "Yes"), aes(label = circRNA_ID)) +
+  labs(title = "Volcano Plot: Zika 72h vs 24h", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+
+# Salva il plot
+ggsave("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_Zika_72h_vs_24h.png", 
+       width = 14, height = 8, dpi = 300)
+
+
+
+# Risultati per 72h vs 48h
+results_zika_72h_vs_48h <- topTags(lrt_zika_72h_vs_48h, n = nrow(y_zika))$table
+volcano_data_zika_72h_vs_48h <- results_zika_72h_vs_48h %>%
+  mutate(circRNA_ID = rownames(results_zika_72h_vs_48h)) %>%
+  mutate(Significant = ifelse(FDR < 0.05 & abs(logFC) > 1, "Yes", "No"))
+
+# Volcano Plot per 72h vs 48h
+ggplot(volcano_data_zika_72h_vs_48h, aes(x = logFC, y = -log10(PValue), color = Significant)) +
+  geom_point() +
+  geom_text_repel(data = filter(volcano_data_zika_72h_vs_48h, Significant == "Yes"), aes(label = circRNA_ID)) +
+  labs(title = "Volcano Plot: Zika 72h vs 48h", x = "Log2 Fold Change", y = "-Log10 P-value") +
+  scale_color_manual(values = c("No" = "red", "Yes" = "blue")) +
+  theme_minimal()
+
+# Salva il plot
+ggsave("/Users/martina/Documents/Template_tesi_UniPD_DEI/Immagini/Volcano_Zika_72h_vs_48h.png", 
+       width = 14, height = 8, dpi = 300)
+
+
+
+
+
+
