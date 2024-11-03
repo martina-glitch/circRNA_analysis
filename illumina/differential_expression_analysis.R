@@ -37,15 +37,7 @@ sample_metadata <- data.frame(
 sample_metadata$condition <- as.factor(sample_metadata$condition)
 sample_metadata$time <- as.factor(sample_metadata$time)
 
-# Set 'control' as the baseline for condition
-sample_metadata$condition <- relevel(sample_metadata$condition, ref = "control")
 
-# Set '24h' as the baseline for time
-sample_metadata$time <- relevel(sample_metadata$time, ref = "24h")
-
-# Create a DGEList object using the raw count data
-group <- factor(sample_metadata$condition)  # Factor representing the experimental groups
-y <- DGEList(counts = count_data, group = group)
 
 # Loop per ogni punto temporale
 for (time_point in unique_times) {
