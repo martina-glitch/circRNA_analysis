@@ -57,6 +57,7 @@ Sono stati generati grafici come:
       - tot_circRNA_illumina.py
     - *analsysis*
       - heatmap.py
+      - differential_expression_analysis.R
     - *output/*
   - **nanopore_analysis**
     - *data_preprocessing*
